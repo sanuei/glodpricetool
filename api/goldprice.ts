@@ -1,9 +1,7 @@
 /**
  * GoldPrice.org 爬虫 API
- * Vercel Serverless Function
+ * 使用官方 JSON API 获取实时金价
  */
-
-import * as cheerio from 'cheerio';
 
 export const config = {
     runtime: 'edge',
@@ -11,12 +9,12 @@ export const config = {
 
 export default async function handler() {
     try {
-        // 获取 goldprice.org 页面
-        const response = await fetch('https://goldprice.org/ja', {
+        // 使用 GoldPrice.org 的 JSON API
+        const response = await fetch('https://data-asg.goldprice.org/dbXRates/USD', {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'ja,en;q=0.9',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'application/json',
+                'Referer': 'https://goldprice.org/',
             },
         });
 
@@ -24,61 +22,41 @@ export default async function handler() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const html = await response.text();
-        const $ = cheerio.load(html);
+        const data = await response.json();
 
-        // 尝试多种选择器获取金价
-        let price: number | null = null;
+        // 提取金价 (xauPrice = 黄金价格 USD/oz)
+        const goldPrice = data.items?.[0]?.xauPrice;
 
-        // 方法1: 查找包含金价的元素
-        const priceText = $('#gpxtickerLeft_price').text() ||
-            $('.gpxtickerLeft .price').text() ||
-            $('[data-price]').first().attr('data-price');
-
-        if (priceText) {
-            price = parseFloat(priceText.replace(/[^0-9.]/g, ''));
-        }
-
-        // 方法2: 从页面文本中提取
-        if (!price) {
-            const bodyText = $('body').text();
-            const match = bodyText.match(/(\d{1,2},?\d{3}\.\d{2})\s*USD/);
-            if (match) {
-                price = parseFloat(match[1].replace(',', ''));
-            }
-        }
-
-        // 如果还是获取不到，返回模拟数据（开发用）
-        if (!price || isNaN(price)) {
-            // 开发环境使用模拟数据
-            price = 4633.57;
+        if (!goldPrice || isNaN(goldPrice)) {
+            throw new Error('无法解析金价数据');
         }
 
         return new Response(JSON.stringify({
-            price,
+            price: goldPrice,
             timestamp: new Date().toISOString(),
             source: 'goldprice.org',
+            change: data.items?.[0]?.chgXau || 0,
+            changePercent: data.items?.[0]?.pcXau || 0,
         }), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                'Cache-Control': 's-maxage=60, stale-while-revalidate=30',
+                'Cache-Control': 's-maxage=30, stale-while-revalidate=15',
+                'Access-Control-Allow-Origin': '*',
             },
         });
 
     } catch (error) {
-        console.error('GoldPrice scraping error:', error);
+        console.error('GoldPrice API error:', error);
 
-        // 返回模拟数据以确保前端可以工作
         return new Response(JSON.stringify({
-            price: 4633.57,
-            timestamp: new Date().toISOString(),
-            source: 'goldprice.org (mock)',
             error: String(error),
+            message: '获取国际金价失败',
         }), {
-            status: 200,
+            status: 500,
             headers: {
                 'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
             },
         });
     }
