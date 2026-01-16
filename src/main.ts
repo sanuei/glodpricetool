@@ -13,7 +13,7 @@ const app = document.querySelector<HTMLDivElement>('#app')!
 
 // 渲染主界面
 function render() {
-    app.innerHTML = `
+  app.innerHTML = `
     <div class="min-h-screen bg-[#f5f5f7]">
       <!-- 顶部标题 -->
       <header class="pt-12 pb-6 text-center">
@@ -159,17 +159,23 @@ function render() {
     </div>
   `
 
-    // 绑定事件
-    bindEvents()
+  // 绑定事件
+  bindEvents()
 }
 
 // 渲染计算结果
 function renderResult(result: CalculatorResult): string {
-    const profitClass = result.profitPerGram >= 0 ? 'text-[#34c759]' : 'text-[#ff3b30]'
-    const profitBg = result.profitPerGram >= 0 ? 'bg-[#34c759]/5 border-[#34c759]/20' : 'bg-[#ff3b30]/5 border-[#ff3b30]/20'
-    const profitSign = result.profitPerGram >= 0 ? '+' : ''
+  const profitClass = result.profitPerGram >= 0 ? 'text-[#34c759]' : 'text-[#ff3b30]'
+  const profitBg = result.profitPerGram >= 0 ? 'bg-[#34c759]/5 border-[#34c759]/20' : 'bg-[#ff3b30]/5 border-[#ff3b30]/20'
+  const profitSign = result.profitPerGram >= 0 ? '+' : ''
 
-    return `
+  // 6. 综合利润计算 (新增)
+  // 公式: (田中单价 - 每克总成本) * 1000
+  // const profitPerKg = (tanakaPriceUSD - totalCostPerGram) * 1000;
+  // 公式: 美元毛利 * U行情价
+  // const profitPerKgJPY = profitPerKg * input.uRate;
+
+  return `
     <div class="space-y-6">
       <!-- 成本计算 -->
       <div class="grid md:grid-cols-2 gap-6">
@@ -215,15 +221,27 @@ function renderResult(result: CalculatorResult): string {
       </div>
       
       <!-- 利润展示 -->
-      <div class="${profitBg} border rounded-2xl p-8 text-center">
+      <div class="${profitBg} border rounded-2xl p-6 text-center">
         <div class="text-[#86868b] mb-2 text-sm font-medium uppercase tracking-wide">每克利润</div>
-        <div class="flex items-center justify-center gap-4">
+        <div class="flex items-center justify-center gap-4 mb-6">
           <span class="${profitClass} text-4xl font-bold font-mono tracking-tight">
             ${profitSign}${formatNumber(result.profitPerGram, 4)} USD
           </span>
           <span class="${profitClass} text-xl font-medium">
             (${profitSign}${formatNumber(result.profitPercentage)}%)
           </span>
+        </div>
+
+        <!-- 综合利润展示 (新增) -->
+        <div class="grid grid-cols-2 gap-4 pt-6 border-t border-${profitClass}/20">
+            <div>
+                <div class="text-[#86868b] text-xs mb-1">每公斤毛利 (USD)</div>
+                <div class="text-[#1d1d1f] font-bold font-mono text-xl">${formatNumber(result.profitPerKg, 4)}</div>
+            </div>
+            <div>
+                <div class="text-[#86868b] text-xs mb-1">每公斤毛利 (JPY)</div>
+                <div class="text-[#1d1d1f] font-bold font-mono text-xl">${formatNumber(result.profitPerKgJPY, 2)}</div>
+            </div>
         </div>
       </div>
     </div>
@@ -232,13 +250,13 @@ function renderResult(result: CalculatorResult): string {
 
 // 渲染历史记录
 function renderHistory(): string {
-    const history = getHistory()
+  const history = getHistory()
 
-    if (history.length === 0) {
-        return `<div class="text-center py-8 text-[#86868b]">暂无历史记录</div>`
-    }
+  if (history.length === 0) {
+    return `<div class="text-center py-8 text-[#86868b]">暂无历史记录</div>`
+  }
 
-    return `
+  return `
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
@@ -253,8 +271,8 @@ function renderHistory(): string {
         </thead>
         <tbody>
           ${history.slice(0, 10).map((r: HistoryRecord) => {
-        const profitClass = r.result.profitPerGram >= 0 ? 'text-[#34c759]' : 'text-[#ff3b30]'
-        return `
+    const profitClass = r.result.profitPerGram >= 0 ? 'text-[#34c759]' : 'text-[#ff3b30]'
+    return `
               <tr class="border-b border-[#f5f5f7] hover:bg-[#f5f5f7] transition-colors">
                 <td class="py-3 px-2 text-[#1d1d1f]">${new Date(r.timestamp).toLocaleString('zh-CN')}</td>
                 <td class="py-3 px-2 text-right text-[#007aff] font-mono">${formatNumber(r.input.goldPriceUSD)}</td>
@@ -264,7 +282,7 @@ function renderHistory(): string {
                 <td class="py-3 px-2 text-right ${profitClass} font-mono font-medium">${formatNumber(r.result.profitPerGram, 4)}</td>
               </tr>
             `
-    }).join('')}
+  }).join('')}
         </tbody>
       </table>
     </div>
@@ -274,86 +292,88 @@ function renderHistory(): string {
 
 // 绑定事件
 function bindEvents() {
-    // 刷新按钮
-    document.getElementById('btn-refresh')?.addEventListener('click', async () => {
-        const btn = document.getElementById('btn-refresh')!
-        const icon = document.getElementById('refresh-icon')!
+  // 刷新按钮
+  document.getElementById('btn-refresh')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-refresh')!
+    const icon = document.getElementById('refresh-icon')!
 
-        btn.setAttribute('disabled', 'true')
-        icon.classList.add('loading-spinner')
+    btn.setAttribute('disabled', 'true')
+    icon.classList.add('loading-spinner')
 
-        try {
-            const { goldPrice, tanakaPrice } = await fetchAllPrices()
-            currentGoldPrice = goldPrice
-            currentTanakaPrice = tanakaPrice
-            render()
-        } catch (error) {
-            alert('获取数据失败，请稍后重试')
-            console.error(error)
-        } finally {
-            btn.removeAttribute('disabled')
-            icon.classList.remove('loading-spinner')
-        }
+    try {
+      const { goldPrice, tanakaPrice } = await fetchAllPrices()
+      currentGoldPrice = goldPrice
+      currentTanakaPrice = tanakaPrice
+      render()
+    } catch (error) {
+      alert('获取数据失败，请稍后重试')
+      console.error(error)
+    } finally {
+      btn.removeAttribute('disabled')
+      icon.classList.remove('loading-spinner')
+    }
+  })
+
+  // 计算按钮
+  document.getElementById('btn-calculate')?.addEventListener('click', () => {
+    if (!currentGoldPrice || !currentTanakaPrice) {
+      alert('请先刷新获取实时数据')
+      return
+    }
+
+    const input: CalculatorInput = {
+      goldPriceUSD: currentGoldPrice.price,
+      tanakaPrice: currentTanakaPrice.buybackPrice,
+      subsidy: parseFloat((document.getElementById('input-subsidy') as HTMLInputElement).value) || 0,
+      hkdToUsd: parseFloat((document.getElementById('input-hkd-usd') as HTMLInputElement).value) || 7.69,
+      water: parseFloat((document.getElementById('input-water') as HTMLInputElement).value) || 0,
+      reduction: parseFloat((document.getElementById('input-reduction') as HTMLInputElement).value) || 0,
+      uRate: parseFloat((document.getElementById('input-u-rate') as HTMLInputElement).value) || 159.8,
+    }
+
+    currentResult = calculate(input)
+    render()
+  })
+
+  // 保存按钮
+  document.getElementById('btn-save')?.addEventListener('click', () => {
+    if (!currentResult || !currentGoldPrice || !currentTanakaPrice) return
+
+    saveRecord({
+      input: {
+        goldPriceUSD: currentGoldPrice.price,
+        tanakaPrice: currentTanakaPrice.buybackPrice,
+        subsidy: parseFloat((document.getElementById('input-subsidy') as HTMLInputElement).value) || 0,
+        hkdToUsd: parseFloat((document.getElementById('input-hkd-usd') as HTMLInputElement).value) || 7.69,
+        water: parseFloat((document.getElementById('input-water') as HTMLInputElement).value) || 0,
+        reduction: parseFloat((document.getElementById('input-reduction') as HTMLInputElement).value) || 0,
+        uRate: parseFloat((document.getElementById('input-u-rate') as HTMLInputElement).value) || 159.8,
+      },
+      result: {
+        totalCostPerGram: currentResult.totalCostPerGram,
+        tanakaPriceUSD: currentResult.tanakaPriceUSD,
+        profitPerGram: currentResult.profitPerGram,
+        profitPercentage: currentResult.profitPercentage,
+        profitPerKg: currentResult.profitPerKg,
+        profitPerKgJPY: currentResult.profitPerKgJPY,
+      },
     })
 
-    // 计算按钮
-    document.getElementById('btn-calculate')?.addEventListener('click', () => {
-        if (!currentGoldPrice || !currentTanakaPrice) {
-            alert('请先刷新获取实时数据')
-            return
-        }
+    render()
+  })
 
-        const input: CalculatorInput = {
-            goldPriceUSD: currentGoldPrice.price,
-            tanakaPrice: currentTanakaPrice.buybackPrice,
-            subsidy: parseFloat((document.getElementById('input-subsidy') as HTMLInputElement).value) || 0,
-            hkdToUsd: parseFloat((document.getElementById('input-hkd-usd') as HTMLInputElement).value) || 7.69,
-            water: parseFloat((document.getElementById('input-water') as HTMLInputElement).value) || 0,
-            reduction: parseFloat((document.getElementById('input-reduction') as HTMLInputElement).value) || 0,
-            uRate: parseFloat((document.getElementById('input-u-rate') as HTMLInputElement).value) || 159.8,
-        }
+  // 导出按钮
+  document.getElementById('btn-export')?.addEventListener('click', () => {
+    downloadCSV()
+  })
 
-        currentResult = calculate(input)
-        render()
-    })
-
-    // 保存按钮
-    document.getElementById('btn-save')?.addEventListener('click', () => {
-        if (!currentResult || !currentGoldPrice || !currentTanakaPrice) return
-
-        saveRecord({
-            input: {
-                goldPriceUSD: currentGoldPrice.price,
-                tanakaPrice: currentTanakaPrice.buybackPrice,
-                subsidy: parseFloat((document.getElementById('input-subsidy') as HTMLInputElement).value) || 0,
-                hkdToUsd: parseFloat((document.getElementById('input-hkd-usd') as HTMLInputElement).value) || 7.69,
-                water: parseFloat((document.getElementById('input-water') as HTMLInputElement).value) || 0,
-                reduction: parseFloat((document.getElementById('input-reduction') as HTMLInputElement).value) || 0,
-                uRate: parseFloat((document.getElementById('input-u-rate') as HTMLInputElement).value) || 159.8,
-            },
-            result: {
-                totalCostPerGram: currentResult.totalCostPerGram,
-                tanakaPriceUSD: currentResult.tanakaPriceUSD,
-                profitPerGram: currentResult.profitPerGram,
-                profitPercentage: currentResult.profitPercentage,
-            },
-        })
-
-        render()
-    })
-
-    // 导出按钮
-    document.getElementById('btn-export')?.addEventListener('click', () => {
-        downloadCSV()
-    })
-
-    // 清空历史
-    document.getElementById('btn-clear-history')?.addEventListener('click', () => {
-        if (confirm('确定要清空所有历史记录吗？')) {
-            clearHistory()
-            render()
-        }
-    })
+  // 清空历史
+  document.getElementById('btn-clear-history')?.addEventListener('click', () => {
+    if (confirm('确定要清空所有历史记录吗？')) {
+      clearHistory()
+      render()
+    }
+  })
 }
 
 // 初始化

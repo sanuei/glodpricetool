@@ -38,6 +38,10 @@ export interface CalculatorResult {
     // 利润
     profitPerGram: number;        // 每克利润 (USD)
     profitPercentage: number;     // 利润百分比
+
+    // 综合利润 (新增)
+    profitPerKg: number;          // 每公斤毛利 (USD)
+    profitPerKgJPY: number;       // 每公斤毛利 (JPY)
 }
 
 /**
@@ -62,6 +66,12 @@ export function calculate(input: CalculatorInput): CalculatorResult {
     const profitPerGram = tanakaPriceUSD - totalCostPerGram;
     const profitPercentage = (profitPerGram / totalCostPerGram) * 100;
 
+    // 6. 综合利润计算 (新增)
+    // 公式: (田中单价 - 每克总成本) * 1000
+    const profitPerKg = (tanakaPriceUSD - totalCostPerGram) * 1000;
+    // 公式: 美元毛利 * U行情价
+    const profitPerKgJPY = profitPerKg * input.uRate;
+
     return {
         subsidyUSD,
         priceAfterWater,
@@ -71,6 +81,8 @@ export function calculate(input: CalculatorInput): CalculatorResult {
         tanakaPriceUSD,
         profitPerGram,
         profitPercentage,
+        profitPerKg,
+        profitPerKgJPY,
     };
 }
 

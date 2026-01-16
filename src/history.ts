@@ -19,6 +19,8 @@ export interface HistoryRecord {
         tanakaPriceUSD: number;
         profitPerGram: number;
         profitPercentage: number;
+        profitPerKg: number;
+        profitPerKgJPY: number;
     };
 }
 
@@ -95,6 +97,8 @@ export function exportToCSV(): string {
         '田中单价(USD/g)',
         '利润(USD/g)',
         '利润率(%)',
+        '每公斤毛利(USD)',
+        '每公斤毛利(JPY)',
     ];
 
     const rows = history.map(r => [
@@ -110,6 +114,9 @@ export function exportToCSV(): string {
         r.result.tanakaPriceUSD.toFixed(4),
         r.result.profitPerGram.toFixed(4),
         r.result.profitPercentage.toFixed(2),
+        // 兼容旧数据，如果有则显示，没有显示 0
+        (r.result.profitPerKg || 0).toFixed(4),
+        (r.result.profitPerKgJPY || 0).toFixed(2),
     ]);
 
     return [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
