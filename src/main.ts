@@ -44,7 +44,7 @@ function render() {
 
       <main class="max-w-[1400px] mx-auto px-6 pb-12 space-y-6">
         
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             <!-- 左侧面板：数据与参数 (占 4/12) -->
             <div class="lg:col-span-4 space-y-6">
