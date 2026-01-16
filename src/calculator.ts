@@ -48,8 +48,8 @@ export interface CalculatorResult {
  * 执行所有计算
  */
 export function calculate(input: CalculatorInput): CalculatorResult {
-    // 1. 补贴成本计算
-    const subsidyUSD = input.subsidy / input.hkdToUsd;
+    // 1. 补贴成本计算 (输入通常为每公斤港币，需转换为每克美元)
+    const subsidyUSD = (input.subsidy / input.hkdToUsd) / 1000;
 
     // 2. 国际金价成本计算
     const priceAfterWater = input.goldPriceUSD + input.water;

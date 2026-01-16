@@ -130,9 +130,16 @@ export function downloadCSV(): void {
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
+    const now = new Date();
+    const timestamp = now.getFullYear() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0') + '_' +
+        String(now.getHours()).padStart(2, '0') +
+        String(now.getMinutes()).padStart(2, '0');
+
     const link = document.createElement('a');
     link.href = url;
-    link.download = `黄金计算历史_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `gold_price_history_${timestamp}.csv`;
     link.click();
 
     URL.revokeObjectURL(url);
