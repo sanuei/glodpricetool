@@ -8,14 +8,24 @@ let currentGoldPrice: GoldPriceData | null = null
 let currentTanakaPrice: TanakaData | null = null
 let currentResult: CalculatorResult | null = null
 
+// 参数设置状态 (默认值)
+let currentSettings = {
+  subsidy: 25000,
+  hkdToUsd: 7.69,
+  water: 10,
+  reduction: 1550,
+  uRate: 159.8
+}
+
+// 定时任务状态
+let lastAutoRefreshDate: string | null = null
+
 // DOM 元素
 const app = document.querySelector<HTMLDivElement>('#app')!
 
 // 渲染主界面
 function render() {
   app.innerHTML = `
-    <div class="min-h-screen bg-[#f5f5f7]">
-      <!-- 顶部标题 -->
     <div class="min-h-screen bg-[#f5f5f7]">
       <!-- 顶部导航栏 (Compact Header) -->
       <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200 h-14 flex items-center mb-6">
@@ -95,27 +105,27 @@ function render() {
                   <div class="grid grid-cols-2 gap-3">
                     <div class="space-y-1">
                       <label class="text-[#86868b] text-xs font-medium">补贴 (HKD)</label>
-                      <input type="number" id="input-subsidy" value="25000" 
+                      <input type="number" id="input-subsidy" value="${currentSettings.subsidy}" 
                         class="w-full input-apple input-highlight font-mono text-[#1d1d1f] text-sm py-2">
                     </div>
                     <div class="space-y-1">
                       <label class="text-[#86868b] text-xs font-medium">汇率 (HKD/USD)</label>
-                      <input type="number" id="input-hkd-usd" value="7.69" step="0.01"
+                      <input type="number" id="input-hkd-usd" value="${currentSettings.hkdToUsd}" step="0.01"
                         class="w-full input-apple input-highlight font-mono text-[#1d1d1f] text-sm py-2">
                     </div>
                     <div class="space-y-1">
                       <label class="text-[#86868b] text-xs font-medium">水 (USD/oz)</label>
-                      <input type="number" id="input-water" value="10" step="1"
+                      <input type="number" id="input-water" value="${currentSettings.water}" step="1"
                         class="w-full input-apple input-highlight font-mono text-[#1d1d1f] text-sm py-2">
                     </div>
                     <div class="space-y-1">
                       <label class="text-[#86868b] text-xs font-medium">减价 (JPY)</label>
-                      <input type="number" id="input-reduction" value="1550" step="10"
+                      <input type="number" id="input-reduction" value="${currentSettings.reduction}" step="10"
                         class="w-full input-apple input-highlight font-mono text-[#1d1d1f] text-sm py-2">
                     </div>
                     <div class="col-span-2 space-y-1">
                       <label class="text-[#86868b] text-xs font-medium">U行情价</label>
-                      <input type="number" id="input-u-rate" value="159.8" step="0.1"
+                      <input type="number" id="input-u-rate" value="${currentSettings.uRate}" step="0.1"
                         class="w-full input-apple input-highlight font-mono text-[#1d1d1f] text-sm py-2">
                     </div>
                   </div>
@@ -131,7 +141,7 @@ function render() {
 
             <!-- 右侧面板：结果展示 (占 8/12) -->
             <div class="lg:col-span-8">
-                <section class="card p-6 transition-apple h-full min-h-[500px] flex flex-col">
+                <section class="card p-6 transition-apple h-full lg:min-h-[500px] min-h-0 flex flex-col">
                   <div class="flex items-center justify-between mb-6">
                       <h2 class="text-xl font-semibold text-[#1d1d1f]">计算结果</h2>
                       <button id="btn-save" class="btn-secondary text-sm py-1.5 px-3" ${!currentResult ? 'disabled' : ''}>
@@ -190,13 +200,13 @@ function renderResult(result: CalculatorResult): string {
   return `
     <div class="space-y-6 h-full flex flex-col">
       
-      <!--  핵심 核心指标的高亮展示 -->
+      <!-- 核心指标的高亮展示 -->
       <div class="grid grid-cols-2 gap-6">
          <!-- 毛利 -->
          <div class="${profitBg} border rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden group">
             <div class="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent pointer-events-none"></div>
             <div class="text-[#86868b] mb-1 text-sm font-medium uppercase tracking-wide relative z-10">每克利润 (USD)</div>
-            <div class="${profitClass} text-5xl font-bold font-mono tracking-tighter relative z-10 my-2">
+            <div class="${profitClass} text-3xl sm:text-5xl font-bold font-mono tracking-tighter relative z-10 my-2">
                 ${profitSign}${formatNumber(result.profitPerGram, 3)}
             </div>
             <div class="${profitClass} text-sm font-medium bg-white/60 px-2 py-0.5 rounded-full relative z-10">
@@ -206,11 +216,11 @@ function renderResult(result: CalculatorResult): string {
          
          <!-- 综合毛利 -->
          <div class="bg-gray-50 border border-gray-200 rounded-2xl p-6 flex flex-col justify-center space-y-4">
-            <div class="flex justify-between items-end border-b border-gray-200 pb-3">
+            <div class="flex flex-col items-start border-b border-gray-200 pb-3 gap-1">
                 <span class="text-[#86868b] text-sm font-medium">每公斤毛利 (USD)</span>
                 <span class="text-[#1d1d1f] font-bold font-mono text-2xl">${formatNumber(result.profitPerKg, 2)}</span>
             </div>
-            <div class="flex justify-between items-end">
+            <div class="flex flex-col items-start gap-1">
                 <span class="text-[#86868b] text-sm font-medium">每公斤毛利 (JPY)</span>
                 <span class="text-[#1d1d1f] font-bold font-mono text-2xl">${formatNumber(result.profitPerKgJPY, 0)}</span>
             </div>
@@ -322,28 +332,52 @@ function renderHistory(): string {
   `
 }
 
+// 获取并刷新数据
+async function fetchAndRefresh() {
+  const btn = document.getElementById('btn-refresh')
+  const icon = document.getElementById('refresh-icon')
+
+  if (btn) btn.setAttribute('disabled', 'true')
+  if (icon) icon.classList.add('loading-spinner')
+
+  try {
+    const { goldPrice, tanakaPrice } = await fetchAllPrices()
+    currentGoldPrice = goldPrice
+    currentTanakaPrice = tanakaPrice
+    render()
+  } catch (error) {
+    console.error('Auto-fetch failed:', error)
+  } finally {
+    if (btn) btn.removeAttribute('disabled')
+    if (icon) icon.classList.remove('loading-spinner')
+  }
+}
+
+// 启动定时任务
+function startSchedule() {
+  // 每分钟检查一次时间
+  setInterval(() => {
+    const now = new Date()
+    const hours = now.getHours()
+    const minutes = now.getMinutes()
+    const todayStr = now.toDateString()
+
+    // 每天早上 9:00 自动获取
+    if (hours === 9 && minutes === 0) {
+      if (lastAutoRefreshDate !== todayStr) {
+        console.log('Fetching daily price at 9:00 AM...')
+        fetchAndRefresh()
+        lastAutoRefreshDate = todayStr
+      }
+    }
+  }, 60000)
+}
+
 // 绑定事件
 function bindEvents() {
   // 刷新按钮
   document.getElementById('btn-refresh')?.addEventListener('click', async () => {
-    const btn = document.getElementById('btn-refresh')!
-    const icon = document.getElementById('refresh-icon')!
-
-    btn.setAttribute('disabled', 'true')
-    icon.classList.add('loading-spinner')
-
-    try {
-      const { goldPrice, tanakaPrice } = await fetchAllPrices()
-      currentGoldPrice = goldPrice
-      currentTanakaPrice = tanakaPrice
-      render()
-    } catch (error) {
-      alert('获取数据失败，请稍后重试')
-      console.error(error)
-    } finally {
-      btn.removeAttribute('disabled')
-      icon.classList.remove('loading-spinner')
-    }
+    fetchAndRefresh()
   })
 
   // 计算按钮
@@ -353,14 +387,23 @@ function bindEvents() {
       return
     }
 
-    const input: CalculatorInput = {
-      goldPriceUSD: currentGoldPrice.price,
-      tanakaPrice: currentTanakaPrice.buybackPrice,
+    // 更新当前设置状态
+    currentSettings = {
       subsidy: parseFloat((document.getElementById('input-subsidy') as HTMLInputElement).value) || 0,
       hkdToUsd: parseFloat((document.getElementById('input-hkd-usd') as HTMLInputElement).value) || 7.69,
       water: parseFloat((document.getElementById('input-water') as HTMLInputElement).value) || 0,
       reduction: parseFloat((document.getElementById('input-reduction') as HTMLInputElement).value) || 0,
       uRate: parseFloat((document.getElementById('input-u-rate') as HTMLInputElement).value) || 159.8,
+    }
+
+    const input: CalculatorInput = {
+      goldPriceUSD: currentGoldPrice.price,
+      tanakaPrice: currentTanakaPrice.buybackPrice,
+      subsidy: currentSettings.subsidy,
+      hkdToUsd: currentSettings.hkdToUsd,
+      water: currentSettings.water,
+      reduction: currentSettings.reduction,
+      uRate: currentSettings.uRate,
     }
 
     currentResult = calculate(input)
@@ -397,11 +440,11 @@ function bindEvents() {
       input: {
         goldPriceUSD: currentGoldPrice.price,
         tanakaPrice: currentTanakaPrice.buybackPrice,
-        subsidy: parseFloat((document.getElementById('input-subsidy') as HTMLInputElement).value) || 0,
-        hkdToUsd: parseFloat((document.getElementById('input-hkd-usd') as HTMLInputElement).value) || 7.69,
-        water: parseFloat((document.getElementById('input-water') as HTMLInputElement).value) || 0,
-        reduction: parseFloat((document.getElementById('input-reduction') as HTMLInputElement).value) || 0,
-        uRate: parseFloat((document.getElementById('input-u-rate') as HTMLInputElement).value) || 159.8,
+        subsidy: currentSettings.subsidy,
+        hkdToUsd: currentSettings.hkdToUsd,
+        water: currentSettings.water,
+        reduction: currentSettings.reduction,
+        uRate: currentSettings.uRate,
       },
       result: {
         totalCostPerGram: currentResult.totalCostPerGram,
@@ -432,3 +475,4 @@ function bindEvents() {
 
 // 初始化
 render()
+startSchedule()
