@@ -3,7 +3,8 @@
  */
 
 // 常量
-export const OZ_TO_KG = 32.1507; // 1公斤 = 32.1507 金衡盎司
+export const GRAMS_PER_OZ = 31.1035; // 1金衡盎司 = 31.1035 克 (Excel公式使用值)
+export const OZ_TO_KG = 32.1507; // 1公斤 = 32.1507 金衡盎司 (参考值)
 
 // 输入参数接口
 export interface CalculatorInput {
@@ -48,17 +49,18 @@ export interface CalculatorResult {
  * 执行所有计算
  */
 export function calculate(input: CalculatorInput): CalculatorResult {
-    // 1. 补贴成本计算 (输入通常为每公斤港币，需转换为每克美元)
+    // 1. 补贴成本计算 (Excel: 25000 / 7.69 / 1000)
     const subsidyUSD = (input.subsidy / input.hkdToUsd) / 1000;
 
     // 2. 国际金价成本计算
+    // Excel: (Price + Water) / 31.1035
     const priceAfterWater = input.goldPriceUSD + input.water;
-    const pricePerGram = priceAfterWater / OZ_TO_KG;
+    const pricePerGram = priceAfterWater / GRAMS_PER_OZ;
 
-    // 3. 每克总成本
+    // 3. 每克总成本 (Excel: GoldPrice/g + Subsidy/g)
     const totalCostPerGram = pricePerGram + subsidyUSD;
 
-    // 4. 田中卖出收入计算
+    // 4. 田中卖出收入计算 (Excel: (Tanaka - Reduction) / URate)
     const shippingPriceJPY = input.tanakaPrice - input.reduction;
     const tanakaPriceUSD = shippingPriceJPY / input.uRate;
 
@@ -66,10 +68,10 @@ export function calculate(input: CalculatorInput): CalculatorResult {
     const profitPerGram = tanakaPriceUSD - totalCostPerGram;
     const profitPercentage = (profitPerGram / totalCostPerGram) * 100;
 
-    // 6. 综合利润计算 (新增)
-    // 公式: (田中单价 - 每克总成本) * 1000
+    // 6. 综合利润计算
+    // Excel: (TanakaUSD - CostUSD) * 1000
     const profitPerKg = (tanakaPriceUSD - totalCostPerGram) * 1000;
-    // 公式: 美元毛利 * U行情价
+    // Excel: ProfitUSD * URate
     const profitPerKgJPY = profitPerKg * input.uRate;
 
     return {
