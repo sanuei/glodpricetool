@@ -14,7 +14,8 @@ let currentSettings = {
   hkdToUsd: 7.69,
   water: 10,
   reduction: 1550,
-  uRate: 159.8
+  uRate: 159.8,
+  goldPriceManual: null as number | null
 }
 
 // 定时任务状态
@@ -104,13 +105,18 @@ function render() {
                   
                   <div class="grid grid-cols-2 gap-3">
                     <div class="space-y-1">
-                      <label class="text-[#86868b] text-xs font-medium">补贴 (HKD)</label>
-                      <input type="number" id="input-subsidy" value="${currentSettings.subsidy}" 
+                      <label class="text-[#86868b] text-xs font-medium">国际金价 (手动)</label>
+                      <input type="number" id="input-gold-price-manual" placeholder="自动获取" value="${currentSettings.goldPriceManual || ''}" step="0.01"
                         class="w-full input-apple input-highlight font-mono text-[#1d1d1f] text-sm py-2">
                     </div>
                     <div class="space-y-1">
-                      <label class="text-[#86868b] text-xs font-medium">汇率 (HKD/USD)</label>
-                      <input type="number" id="input-hkd-usd" value="${currentSettings.hkdToUsd}" step="0.01"
+                      <label class="text-[#86868b] text-xs font-medium">减价 (JPY)</label>
+                      <input type="number" id="input-reduction" value="${currentSettings.reduction}" step="10"
+                        class="w-full input-apple input-highlight font-mono text-[#1d1d1f] text-sm py-2">
+                    </div>
+                    <div class="space-y-1">
+                      <label class="text-[#86868b] text-xs font-medium">U行情价</label>
+                      <input type="number" id="input-u-rate" value="${currentSettings.uRate}" step="0.1"
                         class="w-full input-apple input-highlight font-mono text-[#1d1d1f] text-sm py-2">
                     </div>
                     <div class="space-y-1">
@@ -119,13 +125,13 @@ function render() {
                         class="w-full input-apple input-highlight font-mono text-[#1d1d1f] text-sm py-2">
                     </div>
                     <div class="space-y-1">
-                      <label class="text-[#86868b] text-xs font-medium">减价 (JPY)</label>
-                      <input type="number" id="input-reduction" value="${currentSettings.reduction}" step="10"
+                      <label class="text-[#86868b] text-xs font-medium">补贴 (HKD)</label>
+                      <input type="number" id="input-subsidy" value="${currentSettings.subsidy}" 
                         class="w-full input-apple input-highlight font-mono text-[#1d1d1f] text-sm py-2">
                     </div>
-                    <div class="col-span-2 space-y-1">
-                      <label class="text-[#86868b] text-xs font-medium">U行情价</label>
-                      <input type="number" id="input-u-rate" value="${currentSettings.uRate}" step="0.1"
+                    <div class="space-y-1">
+                      <label class="text-[#86868b] text-xs font-medium">汇率 (HKD/USD)</label>
+                      <input type="number" id="input-hkd-usd" value="${currentSettings.hkdToUsd}" step="0.01"
                         class="w-full input-apple input-highlight font-mono text-[#1d1d1f] text-sm py-2">
                     </div>
                   </div>
@@ -388,16 +394,19 @@ function bindEvents() {
     }
 
     // 更新当前设置状态
+    const manualGoldVal = parseFloat((document.getElementById('input-gold-price-manual') as HTMLInputElement).value)
+
     currentSettings = {
       subsidy: parseFloat((document.getElementById('input-subsidy') as HTMLInputElement).value) || 0,
       hkdToUsd: parseFloat((document.getElementById('input-hkd-usd') as HTMLInputElement).value) || 7.69,
       water: parseFloat((document.getElementById('input-water') as HTMLInputElement).value) || 0,
       reduction: parseFloat((document.getElementById('input-reduction') as HTMLInputElement).value) || 0,
       uRate: parseFloat((document.getElementById('input-u-rate') as HTMLInputElement).value) || 159.8,
+      goldPriceManual: !isNaN(manualGoldVal) ? manualGoldVal : null
     }
 
     const input: CalculatorInput = {
-      goldPriceUSD: currentGoldPrice.price,
+      goldPriceUSD: currentSettings.goldPriceManual !== null ? currentSettings.goldPriceManual : currentGoldPrice.price,
       tanakaPrice: currentTanakaPrice.buybackPrice,
       subsidy: currentSettings.subsidy,
       hkdToUsd: currentSettings.hkdToUsd,
@@ -411,7 +420,7 @@ function bindEvents() {
     // 自动保存记录
     saveRecord({
       input: {
-        goldPriceUSD: currentGoldPrice.price,
+        goldPriceUSD: input.goldPriceUSD,
         tanakaPrice: currentTanakaPrice.buybackPrice,
         subsidy: input.subsidy,
         hkdToUsd: input.hkdToUsd,
@@ -438,7 +447,7 @@ function bindEvents() {
 
     saveRecord({
       input: {
-        goldPriceUSD: currentGoldPrice.price,
+        goldPriceUSD: currentSettings.goldPriceManual !== null ? currentSettings.goldPriceManual : currentGoldPrice.price,
         tanakaPrice: currentTanakaPrice.buybackPrice,
         subsidy: currentSettings.subsidy,
         hkdToUsd: currentSettings.hkdToUsd,
